@@ -10,6 +10,10 @@ typedef struct {
 } cellContent;
 
 typedef struct {
-	unsigned char width, height;
+	unsigned char height, width;
 	mapCell **cells;
 } map;
+
+map genMap(unsigned char height, unsigned char width, unsigned int randSeed);
+
+mapCell *pgenMapCell(unsigned char walls[4], unsigned char cntContent, unsigned char x, unsigned char y, cellContent **contents, map *map);
