@@ -1,14 +1,15 @@
 typedef struct {
-	unsigned char walls[4], cntContent;
+	unsigned char walls[4], cntContent, x, y;
 	struct cellContent **contents;
+	struct map *map;
 } mapCell;
 
 typedef struct {
 	unsigned char type;
-	struct mapCell *cell;
+	mapCell *cell;
 } cellContent;
 
 typedef struct {
 	unsigned char width, height;
-	struct mapCell **cells;
+	mapCell **cells;
 } map;
