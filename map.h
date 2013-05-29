@@ -19,4 +19,6 @@ typedef struct map {
 
 map genMap(unsigned char height, unsigned char width, unsigned int randSeed);
 
+void printMap(map map);
+
 #endif
