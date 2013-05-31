@@ -51,18 +51,18 @@ mapCell *getNeighbour(mapCell *cell, unsigned char dir) {
 /* Erstellt einen Irrgarten auf der gegebenen Karte ähnlich dem Algorithmus von Prim. Somit ist der entstehende Irrgarten zyklenfrei. 
  * Die Prozedur geht davon aus, dass randomize(), srand() oder etwas ähnliches ausgeführt wurde.
  * Die Prozedur geht davon aus, dass alle Wände als unpassierbar markiert sind. */
-void genMazePrim1(map *map) {
+void genMazePrim1cnt(map *map, unsigned int cellsSoll) {
 	mapCell *cell, *neighbour;
 	unsigned char height = map->height, width = map->width, w;
-	unsigned int cntCells = height*width, pos, cntUsed;
+	unsigned int cntCells = height*width, pos, cellsHaben;
 	map->cells[0]->walls[w = (rand()%2)] = 255;
 	if (w) {
 		map->cells[height]->walls[3]=255;
 	} else {
 		map->cells[1]->walls[2] = 255;
 	}
-	cntUsed = 2;
-	while (cntUsed < cntCells) {
+	cellsHaben = 2;
+	while (cellsHaben < cellsSoll) {
 		pos = (rand()%cntCells);
 		do {
 			cell = map->cells[(++pos) % (cntCells)];
@@ -70,42 +70,42 @@ void genMazePrim1(map *map) {
 		for (w = 0; w < 4; w++) {
 			if ((neighbour = getNeighbour(cell, w)) && !(neighbour->walls[0] | neighbour->walls[1] | neighbour->walls[2] | neighbour->walls[3])) {
 				cell->walls[w] = neighbour->walls[(w+2)%4] = 255;
-				cntUsed++;
+				cellsHaben++;
 			}
 		}
 	}
 	return;
 }
 
-void genMazePrim2(map *map) {
+void genMazePrim2cnt(map *map, unsigned int cellsSoll) {
 	mapCell *cell, *neighbour;
 	unsigned char height = map->height, width = map->width, w;
-	unsigned int cntCells = height*width, cntUsed;
+	unsigned int cntCells = height*width, cellsHaben;
 	map->cells[0]->walls[w = (rand()%2)] = 255;
 	if (w) {
 		map->cells[height]->walls[3]=255;
 	} else {
 		map->cells[1]->walls[2] = 255;
 	}
-	cntUsed = 2;
-	while (cntUsed < cntCells) {
+	cellsHaben = 2;
+	while (cellsHaben < cellsSoll) {
 		do {
 			cell = map->cells[rand()%cntCells];
 		} while (!(cell->walls[0] | cell->walls[1] | cell->walls[2] | cell->walls[3]));
 		for (w = 0; w < 4; w++) {
 			if ((neighbour = getNeighbour(cell, w)) && !(neighbour->walls[0] | neighbour->walls[1] | neighbour->walls[2] | neighbour->walls[3])) {
 				cell->walls[w] = neighbour->walls[(w+2)%4] = 255;
-				cntUsed++;
+				cellsHaben++;
 			}
 		}
 	}
 	return;
 }
 
-void genMazePrim3(map *map) {
+void genMazePrim3cnt(map *map, unsigned int cellsSoll) {
 	mapCell *cell, *neighbour;
 	unsigned char height = map->height, width = map->width, w;
-	unsigned int cntCells = height*width, cntUsed = 0;
+	unsigned int cntCells = height*width, cellsHaben = 0;
 	if (cntCells <= 1) {
 		return;
 	}
@@ -114,10 +114,10 @@ void genMazePrim3(map *map) {
 		w = rand() % 4;	
 		if (neighbour = getNeighbour(cell, w)) {
 			cell->walls[w] = neighbour->walls[(w+2)%4] = 255;
-			cntUsed = 2;
+			cellsHaben = 2;
 		}
-	} while (cntUsed == 0);
-	while (cntUsed < cntCells) {
+	} while (cellsHaben == 0);
+	while (cellsHaben < cellsSoll) {
 		do {
 			cell = map->cells[rand()%cntCells];
 		} while ((cell->walls[0] | cell->walls[1] | cell->walls[2] | cell->walls[3]) == 0);
@@ -125,10 +125,54 @@ void genMazePrim3(map *map) {
 		for (int i = 0; i < 4; i++) {
 			if ((neighbour = getNeighbour(cell, w+i)) && ((neighbour->walls[0] | neighbour->walls[1] | neighbour->walls[2] | neighbour->walls[3]) == 0)) {
 				cell->walls[w+i] = neighbour->walls[(w+i+2)%4] = 255;
-				cntUsed++;
+				cellsHaben++;
 				i = 4;
 			}
 		}
+	}
+	return;
+}
+
+void genMazePrim1(map *map) {
+	genMazePrim1cnt(map, map->height*map->width);
+	return;
+}
+
+void genMazePrim2(map *map) {
+	genMazePrim2cnt(map, map->height*map->width);
+	return;
+}
+
+void genMazePrim3(map *map) {
+	genMazePrim3cnt(map, map->height*map->width);
+	return;
+}
+
+void genMazePrim(map *map, unsigned char version, unsigned int cellsSoll) {
+	cellsSoll += cellsSoll?0:(map->height*map->width);
+	switch (version) {
+	case 1:
+		genMazePrim1cnt(map, cellsSoll);
+		break;
+	case 2:
+		genMazePrim1cnt(map, cellsSoll);
+		break;
+	case 3:
+	default:
+		genMazePrim3cnt(map, cellsSoll);
+		break;
+	}
+	return;
+}
+
+void genMaze(map *map, void *algorithm, unsigned char version, unsigned int cellsSoll) {
+	switch (*(unsigned int *)algorithm) {
+	case 0x6D697250:
+		genMazePrim(map, version, cellsSoll);
+		break;
+	default:
+		printf("Panic!!\n");
+		break;
 	}
 	return;
 }
@@ -149,7 +193,7 @@ map genMap(unsigned char height, unsigned char width, unsigned int randSeed) {
 		}
 	}
 	srand(randSeed?randSeed:time(NULL));
-	genMazePrim3(&map);
+	genMaze(&map, "Prim", 3, height*width);
 	return map;
 }
 
