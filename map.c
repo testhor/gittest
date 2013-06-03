@@ -177,10 +177,62 @@ void genMaze(map *map, void *algorithm, unsigned char version, unsigned int cell
 	return;
 }
 
+map truncMap(map map) {
+	unsigned char xOffset, newHeight, yOffset, newWidth;
+	struct map reMap = {0, 0, NULL};
+	char used = 0;
+	for (xOffset = 0; !used && (xOffset < map.height); xOffset++) {
+		for (unsigned char y = 0; (y < map.width) && !used ; y++) {
+			used |= (0 != *(unsigned int *)map.cells[xOffset+map.height*y]->walls);
+		}
+	}
+	if (!used) {
+		return reMap;
+	} else {
+		xOffset--;
+	}
+	used = 0;
+	for (newHeight = map.height-1; !used; newHeight--) {
+		for (unsigned char y = 0; (y < map.width) && !used ; y++) {
+			used |= (0 != *(unsigned int *)map.cells[newHeight+map.height*y]->walls);
+		}
+	}
+	newHeight += 2;
+	newHeight -= xOffset;
+	used = 0;
+	for (yOffset = 0; !used; yOffset++) {
+		for (unsigned char x = 0; (x < map.height) && !used ; x++) {
+			used |= (0 != *(unsigned int *)map.cells[x+map.height*yOffset]->walls);
+		}
+	}
+	yOffset--;
+	used = 0;
+	for (newWidth = map.width-1; !used; newWidth--) {
+		for (unsigned char x = 0; (x < map.height) && !used ; x++) {
+			used |= (0 != *(unsigned int *)map.cells[x+map.height*newWidth]->walls);
+		}
+	}
+	newWidth += 2;
+	newWidth -= yOffset;
+	reMap.cells = malloc(newHeight*newWidth*sizeof(mapCell *));
+	if (reMap.cells == NULL) {
+		fprintf(stderr, "Speicherallokation fehlgeschlagen in Funktionsaufruf truncMap({%d, %d, %p}).", map.height, map.width, (void *)map.cells);
+		return reMap;
+	}
+	reMap.width = newWidth;
+	reMap.height = newHeight;
+	for (unsigned char x = 0; x < newHeight; x++) {
+		for (unsigned char y = 0; y < newWidth; y++) {
+			reMap.cells[x+newHeight*y] = map.cells[x+xOffset+map.height*(y+yOffset)];
+		}
+	}
+	return reMap;
+}
+
 /* Erstellt eine Karte der Höhe height und der Breite width und füllt sie mit einem pseudo-zufälligen Wegemuster, welches von randSeed abhängt.
  * Falls randSeed = 0 ist, so wird statt dessen time(NULL) genommen. */
 map genMap(unsigned char height, unsigned char width, unsigned int randSeed) {
-	map map = {height, width, malloc(height*width*sizeof(mapCell *))};
+	map map = {height, width, malloc(height*width*sizeof(mapCell *))}, tmap;
 	if (map.cells == NULL) {
 		fprintf(stderr, "Speicherallokation fehlgeschlagen in Funktionsaufruf genMap(%hu, %hu, %u).", height, width, randSeed);
 		map.height = map.width = 0;
@@ -193,14 +245,26 @@ map genMap(unsigned char height, unsigned char width, unsigned int randSeed) {
 		}
 	}
 	srand(randSeed?randSeed:time(NULL));
-	genMaze(&map, "Prim", 3, height*width);
-	return map;
+	genMaze(&map, "Prim", 3, height*width/20+(rand()%(height*width/10)));
+	tmap = truncMap(map);
+	for (unsigned char x = 0; x < height; x++) {
+		for (unsigned char y = 0; y < width; y++) {
+			if ((x < tmap.height) && (y < tmap.width) && (*(unsigned int *)tmap.cells[x+tmap.height*y]->walls == 0)) {
+				tmap.cells[x+tmap.height*y] = NULL;
+			}
+			if (*(unsigned int *)map.cells[x+map.height*y]->walls == 0) {
+				free(map.cells[x+height*y]);
+			}
+		}
+	}
+	free(map.cells);
+	return tmap;
 }
 
-void printMap(map map) {
+void printMap(struct map map) {
 	for (int x = 0; x < map.height; x++) {
 		for (int y = 0; y < map.width; y++) {
-			unsigned char w = ((map.cells[x+map.height*y]->walls[0] & 1) | (map.cells[x+map.height*y]->walls[1] & 2) | (map.cells[x+map.height*y]->walls[2] & 4) | (map.cells[x+map.height*y]->walls[3] & 8));
+			unsigned char w = map.cells[x+map.height*y]?((map.cells[x+map.height*y]->walls[0] & 1) | (map.cells[x+map.height*y]->walls[1] & 2) | (map.cells[x+map.height*y]->walls[2] & 4) | (map.cells[x+map.height*y]->walls[3] & 8)):0;
 			switch (w) {
 			case  1: {w = 0xBB; break;};
 			case  2: {w = 0xBA; break;};
@@ -227,4 +291,5 @@ void printMap(map map) {
 		}
 		putchar('\n');
 	}
+	return;
 }
